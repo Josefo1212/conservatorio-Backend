@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { createUser } from "../queries/user.queries";
+import bcrypt from "bcrypt";
 import pool from "../config/database";
 
 export async function register(req: Request, res: Response) {
-    console.log("Register request received:", req.body); // Added logging for request body
+    console.log("Register request received:", req.body);
     try {
-        // Check if user already exists by cedula or correo
         const existingUser = await pool.query(
             "SELECT id_usuario FROM usuario WHERE cedula = $1 OR correo = $2",
             [req.body.cedula, req.body.correo]
@@ -16,14 +16,17 @@ export async function register(req: Request, res: Response) {
             });
         }
 
-        const user = await createUser(req.body);
+        const hashedPassword = await bcrypt.hash(req.body.password, 10);
+        const userData = { ...req.body, password: hashedPassword };
+
+        const user = await createUser(userData);
 
         return res.status(201).json({
             message: "Usuario registrado correctamente",
             data: user
         });
     } catch (error: any) {
-        console.error("REGISTER ERROR:", error); // Enhanced error logging
+        console.error("REGISTER ERROR:", error);
         return res.status(500).json({
             message: "Error interno del servidor",
             error: error.message

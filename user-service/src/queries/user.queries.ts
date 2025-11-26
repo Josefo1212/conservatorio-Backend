@@ -2,12 +2,19 @@ import pool from "../config/database";
 
 export async function createUser(data: any) {
     const client = await pool.connect();
-    console.log("Starting createUser with data:", data); // Added logging for function start
+    console.log("Starting createUser with data:", data);
 
     try {
         await client.query("BEGIN");
 
-        const {cedula,nombres,apellidos,correo,password,fecha_nacimiento,nro_tlf,
+        const {
+            cedula,
+            nombres,
+            apellidos,
+            correo,
+            password,
+            fecha_nacimiento,
+            nro_tlf,
 
             // ubicación
             estado,
@@ -17,13 +24,12 @@ export async function createUser(data: any) {
             direccion,
             lugar_nacimiento
 
-            // Removed role
         } = data;
 
         // ============================
         // 1. ESTADO
         // ============================
-        console.log("Processing estado:", estado); // Added logging
+        console.log("Processing estado:", estado);
         let estadoResult = await client.query(
             "SELECT id_estado FROM estado WHERE nombre_estado = $1",
             [estado]
@@ -41,7 +47,7 @@ export async function createUser(data: any) {
         // ============================
         // 2. MUNICIPIO
         // ============================
-        console.log("Processing municipio:", municipio); // Added logging
+        console.log("Processing municipio:", municipio);
         let municipioResult = await client.query(
             "SELECT id_municipio FROM municipio WHERE nombre_municipio = $1 AND id_estados = $2",
             [municipio, id_estado]
@@ -59,7 +65,7 @@ export async function createUser(data: any) {
         // ============================
         // 3. LOCALIDAD
         // ============================
-        console.log("Processing localidad:", localidad); // Added logging
+        console.log("Processing localidad:", localidad);
         let localidadResult = await client.query(
             "SELECT id_localidad FROM localidad WHERE nombre_localidad = $1 AND id_municipios = $2 AND tipo = $3",
             [localidad, id_municipio, tipo_localidad]
@@ -77,7 +83,7 @@ export async function createUser(data: any) {
         // ============================
         // 4. UBICACION
         // ============================
-        console.log("Inserting ubicacion"); // Added logging
+        console.log("Inserting ubicacion");
         const ubicacionResult = await client.query(
             `INSERT INTO ubicacion (id_localidades, direccion, lugar_nacimiento)
              VALUES ($1, $2, $3)
@@ -111,7 +117,7 @@ export async function createUser(data: any) {
         const id_usuario = usuarioResult.rows[0].id_usuario;
 
         await client.query("COMMIT");
-        console.log("createUser completed successfully for user ID:", id_usuario); // Added logging
+        console.log("createUser completed successfully for user ID:", id_usuario);
 
         return {
             id_usuario,
@@ -119,11 +125,10 @@ export async function createUser(data: any) {
             estado,
             municipio,
             localidad
-            // Removed role
         };
 
     } catch (error) {
-        console.error("Error in createUser:", error); // Added error logging
+        console.error("Error in createUser:", error);
         await client.query("ROLLBACK");
         throw error;
     } finally {
