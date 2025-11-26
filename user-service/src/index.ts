@@ -6,7 +6,7 @@ import userRoutes from './routes/user.routes';
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use('/users', userRoutes); // Add user routes
+app.use('/users', userRoutes);
 
 
 async function main(){
@@ -19,7 +19,7 @@ async function main(){
     }
 
     app.listen(PORT, () => {
-        console.log(`Auth service running on port ${PORT}`);
+        console.log(`user service running on port ${PORT}`);
     });
 }
 

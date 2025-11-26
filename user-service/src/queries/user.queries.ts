@@ -135,3 +135,54 @@ export async function createUser(data: any) {
         client.release();
     }
 }
+
+export async function checkExistingUser(cedula: string) {
+    const result = await pool.query(
+        "SELECT id_usuario FROM usuario WHERE cedula = $1",
+        [cedula]
+    );
+    return result.rows.length > 0;
+}
+
+export async function getRoleId(roleName: string) {
+    const result = await pool.query("SELECT id_rol FROM roles WHERE nombre_rol = $1", [roleName]);
+    return result.rows.length > 0 ? result.rows[0].id_rol : null;
+}
+
+export async function assignUserRole(userId: number, roleId: number) {
+    await pool.query("INSERT INTO usuario_roles (usuarios_id, roles_id) VALUES ($1, $2)", [userId, roleId]);
+}
+
+export async function deleteUser(userId: number) {
+    await pool.query("DELETE FROM usuario WHERE id_usuario = $1", [userId]);
+}
+//queries para gaurdar los datos de los diferentes roles
+export async function insertAlumnoDatos(userId: number, alumnoData: { matricula: string; estatus: string; nacionalidad: string; instituto: string; instrumento_principal: string }) {
+    await pool.query(
+        "INSERT INTO Alumno_datos (id_alumnos, matricula, estatus, nacionalidad, instituto, instrumento_principal) VALUES ($1, $2, $3, $4, $5, $6)",
+        [userId, alumnoData.matricula, alumnoData.estatus, alumnoData.nacionalidad, alumnoData.instituto, alumnoData.instrumento_principal]
+    );
+}
+
+export async function insertRepresentanteDatos(userId: number, representanteData: { ocupacion: string; parentesco: string }) {
+    await pool.query(
+        "INSERT INTO Representante_datos (id_representantes, ocupacion, parentesco) VALUES ($1, $2, $3)",
+        [userId, representanteData.ocupacion, representanteData.parentesco]
+    );
+}
+
+export async function insertProfesorDatos(userId: number, profesorData: { profesion: string; nacionalidad: string }) {
+    await pool.query(
+        "INSERT INTO Profesor_datos (id_profesores, profesion, nacionalidad) VALUES ($1, $2, $3)",
+        [userId, profesorData.profesion, profesorData.nacionalidad]
+    );
+}
+
+export async function insertAlumnoRepresentante(alumnoId: number, representantes: number[]) {
+    for (const repId of representantes) {
+        await pool.query(
+            "INSERT INTO Alumno_Representante (alumnos_id, representantes_id) VALUES ($1, $2)",
+            [alumnoId, repId]
+        );
+    }
+}

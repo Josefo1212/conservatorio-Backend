@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getUserByCedula, insertSession, updateSessionLogout, getSessionByRefreshToken } from "../queries/auth.queries";
+import { getUserByCedula, insertSession, updateSessionLogout, getSessionByRefreshToken, getUserRole } from "../queries/auth.queries";
 import bcrypt from "bcrypt";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../middleware/token.utils";
 
@@ -15,9 +15,13 @@ export async function login(req: Request, res: Response) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) return res.status(401).json({ message: 'Credenciales inválidas' });
 
+    // Consultar el rol del usuario
+    const rol = await getUserRole(user.id_usuario);
+    if (!rol) return res.status(403).json({ message: 'Usuario sin rol asignado' });
+
     console.log('Usuario autenticado, generando tokens...');
-    // Generate tokens
-    const accessToken = generateAccessToken(user.id_usuario);
+    // Generate tokens con rol incluido
+    const accessToken = generateAccessToken(user.id_usuario, rol);
     const refreshToken = generateRefreshToken(user.id_usuario);
     const refreshExp = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
@@ -56,7 +60,8 @@ export async function refresh(req: Request, res: Response) {
     if (rows.length === 0) return res.status(401).json({ message: 'Sesión inválida' });
 
     console.log('Refresh token verificado, generando nuevo access token');
-    const newAccessToken = generateAccessToken(payload.userId);
+    const rol = await getUserRole(payload.userId); // Agregar consulta de rol
+    const newAccessToken = generateAccessToken(payload.userId, rol);
     res.status(200).json({ accessToken: newAccessToken });
     console.log('Nuevo access token enviado');
   } catch (error) {

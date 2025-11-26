@@ -7,9 +7,9 @@ import authRoutes from './routes/auth.routes';
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(cookieParser()); // Configura cookie-parser
+app.use(cookieParser());
 
-app.use(authRoutes);
+app.use('/auth', authRoutes);
 
 async function main(){
     try {

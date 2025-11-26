@@ -32,3 +32,12 @@ export async function getUserById(idUsuario: number) {
   console.log('Usuario consultado por ID:', idUsuario, 'encontrado:', result.rows.length > 0);
   return result;
 }
+
+export async function getUserRole(userId: number) {
+  const result = await pool.query(
+    "SELECT r.nombre_rol FROM usuario_roles ur JOIN Roles r ON ur.roles_id = r.id_rol WHERE ur.usuarios_id = $1",
+    [userId]
+  );
+  console.log('Rol consultado para usuario:', userId, 'rol encontrado:', result.rows[0]?.nombre_rol);
+  return result.rows[0]?.nombre_rol;
+}
