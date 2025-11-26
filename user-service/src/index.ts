@@ -1,13 +1,13 @@
 import express from 'express';
 import app from './app';
 import pool from './config/database';
-import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
 
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use('/users', userRoutes); // Add user routes
 
-app.use(authRoutes);
 
 async function main(){
     try {
