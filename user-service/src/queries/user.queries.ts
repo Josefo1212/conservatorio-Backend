@@ -186,3 +186,50 @@ export async function insertAlumnoRepresentante(alumnoId: number, representantes
         );
     }
 }
+
+export async function getUserById(id: number) {
+    const result = await pool.query(`
+        SELECT u.*, e.nombre_estado, m.nombre_municipio, l.nombre_localidad, l.tipo as tipo_localidad, ub.direccion, ub.lugar_nacimiento, r.nombre_rol
+        FROM usuario u
+        JOIN ubicacion ub ON u.id_ubicaciones = ub.id_ubicacion
+        JOIN localidad l ON ub.id_localidades = l.id_localidad
+        JOIN municipio m ON l.id_municipios = m.id_municipio
+        JOIN estado e ON m.id_estados = e.id_estado
+        LEFT JOIN usuario_roles ur ON u.id_usuario = ur.usuarios_id
+        LEFT JOIN roles r ON ur.roles_id = r.id_rol
+        WHERE u.id_usuario = $1
+    `, [id]);
+    return result.rows[0];
+}
+
+export async function updateUser(id: number, updates: any) {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        // Actualizar usuario (campos básicos)
+        const userFields = ['nombres', 'apellidos', 'correo', 'fecha_nacimiento', 'nro_tlf'];
+        const setParts = userFields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+        const values = userFields.map(field => updates[field]).filter(val => val !== undefined);
+        if (values.length > 0) {
+            await client.query(`UPDATE usuario SET ${setParts} WHERE id_usuario = $1`, [id, ...values]);
+        }
+        // Actualizar ubicación si se proporciona
+        if (updates.direccion || updates.lugar_nacimiento) {
+            await client.query(`UPDATE ubicacion SET direccion = $1, lugar_nacimiento = $2 WHERE id_ubicacion = (SELECT id_ubicaciones FROM usuario WHERE id_usuario = $3)`, [updates.direccion, updates.lugar_nacimiento, id]);
+        }
+        await client.query("COMMIT");
+        return { message: 'User updated successfully' };
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+export async function updateUserRole(userId: number, roleName: string) {
+    const roleId = await getRoleId(roleName);
+    if (!roleId) throw new Error('Role not found');
+    await pool.query('DELETE FROM usuario_roles WHERE usuarios_id = $1', [userId]);
+    await assignUserRole(userId, roleId);
+}

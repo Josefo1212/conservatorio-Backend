@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createUser, checkExistingUser, getRoleId, assignUserRole, deleteUser, insertAlumnoDatos, insertRepresentanteDatos, insertProfesorDatos, insertAlumnoRepresentante } from "../queries/user.queries";
+import { createUser, checkExistingUser, getRoleId, assignUserRole, deleteUser, insertAlumnoDatos, insertRepresentanteDatos, insertProfesorDatos, insertAlumnoRepresentante, getUserById, updateUser as updateUserQuery, updateUserRole } from "../queries/user.queries";
 import bcrypt from "bcrypt";
 
 export async function register(req: Request, res: Response) {
@@ -77,5 +77,42 @@ export async function register(req: Request, res: Response) {
             message: "Error interno del servidor",
             error: error.message
         });
+    }
+}
+
+export async function getUser(req: Request, res: Response) {
+    try {
+        const { id } = req.params;
+        const user = await getUserById(Number(id));
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        return res.json(user);
+    } catch (error: any) {
+        console.error('GET USER ERROR:', error);
+        return res.status(500).json({ message: 'Error fetching user', error: error.message });
+    }
+}
+
+export async function updateUser(req: Request, res: Response) {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+        const result: any = await updateUserQuery(Number(id), updates);
+        res.json(result);
+    } catch (error: any) {
+        console.error('UPDATE USER ERROR:', error);
+        res.status(500).json({ message: 'Error updating user', error: error.message });
+    }
+}
+
+export async function assignRole(req: Request, res: Response) {
+    try {
+        const { userId, role } = req.body;
+        await updateUserRole(userId, role);
+        return res.json({ message: 'Role assigned successfully' });
+    } catch (error: any) {
+        console.error('ASSIGN ROLE ERROR:', error);
+        return res.status(500).json({ message: 'Error assigning role', error: error.message });
     }
 }

@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 });
 app.use(express_1.default.json());
 app.use((0, cors_1.default)({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:8080',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
