@@ -6,6 +6,6 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
-app.use(userRoutes); // Mount user routes under /api
+app.use('/user',userRoutes); 
 
 export default app;

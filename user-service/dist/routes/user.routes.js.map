@@ -1,1 +1,1 @@
-{"version":3,"file":"user.routes.js","sourceRoot":"","sources":["../../src/routes/user.routes.ts"],"names":[],"mappings":";;AAAA,qCAAiC;AACjC,mEAAyD;AAEzD,MAAM,MAAM,GAAG,IAAA,gBAAM,GAAE,CAAC;AAExB,MAAM,CAAC,IAAI,CAAC,WAAW,EAAE,0BAAQ,CAAC,CAAC;AAEnC,kBAAe,MAAM,CAAC"}
+{"version":3,"file":"user.routes.js","sourceRoot":"","sources":["../../src/routes/user.routes.ts"],"names":[],"mappings":";;AAAA,qCAAiC;AACjC,mEAAyD;AACzD,mEAAkE;AAElE,MAAM,MAAM,GAAG,IAAA,gBAAM,GAAE,CAAC;AAExB,MAAM,CAAC,IAAI,CAAC,WAAW,EAAE,mCAAiB,EAAE,0BAAQ,CAAC,CAAC;AAEtD,kBAAe,MAAM,CAAC"}
