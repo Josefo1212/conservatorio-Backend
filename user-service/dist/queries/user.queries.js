@@ -12,6 +12,9 @@ exports.insertAlumnoDatos = insertAlumnoDatos;
 exports.insertRepresentanteDatos = insertRepresentanteDatos;
 exports.insertProfesorDatos = insertProfesorDatos;
 exports.insertAlumnoRepresentante = insertAlumnoRepresentante;
+exports.getUserById = getUserById;
+exports.updateUser = updateUser;
+exports.updateUserRole = updateUserRole;
 const database_1 = __importDefault(require("../config/database"));
 async function createUser(data) {
     const client = await database_1.default.connect();
@@ -120,6 +123,56 @@ async function insertProfesorDatos(userId, profesorData) {
 async function insertAlumnoRepresentante(alumnoId, representantes) {
     for (const repId of representantes) {
         await database_1.default.query("INSERT INTO Alumno_Representante (alumnos_id, representantes_id) VALUES ($1, $2)", [alumnoId, repId]);
+    }
+}
+async function getUserById(id) {
+    const result = await database_1.default.query(`
+        SELECT u.*, e.nombre_estado, m.nombre_municipio, l.nombre_localidad, l.tipo as tipo_localidad, ub.direccion, ub.lugar_nacimiento, r.nombre_rol
+        FROM usuario u
+        JOIN ubicacion ub ON u.id_ubicaciones = ub.id_ubicacion
+        JOIN localidad l ON ub.id_localidades = l.id_localidad
+        JOIN municipio m ON l.id_municipios = m.id_municipio
+        JOIN estado e ON m.id_estados = e.id_estado
+        LEFT JOIN usuario_roles ur ON u.id_usuario = ur.usuarios_id
+        LEFT JOIN roles r ON ur.roles_id = r.id_rol
+        WHERE u.id_usuario = $1
+    `, [id]);
+    return result.rows[0];
+}
+async function updateUser(id, updates) {
+    const client = await database_1.default.connect();
+    try {
+        await client.query("BEGIN");
+        // Actualizar usuario (campos básicos)
+        const userFields = ['nombres', 'apellidos', 'correo', 'fecha_nacimiento', 'nro_tlf'];
+        const setParts = userFields.map((field, index) => `${field} = $${index + 2}`).join(', ');
+        const values = userFields.map(field => updates[field]).filter(val => val !== undefined);
+        if (values.length > 0) {
+            await client.query(`UPDATE usuario SET ${setParts} WHERE id_usuario = $1`, [id, ...values]);
+        }
+        // Actualizar ubicación si se proporciona
+        if (updates.direccion || updates.lugar_nacimiento) {
+            await client.query(`UPDATE ubicacion SET direccion = $1, lugar_nacimiento = $2 WHERE id_ubicacion = (SELECT id_ubicaciones FROM usuario WHERE id_usuario = $3)`, [updates.direccion, updates.lugar_nacimiento, id]);
+        }
+        await client.query("COMMIT");
+        return { message: 'User updated successfully' };
+    }
+    catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    }
+    finally {
+        client.release();
+    }
+}
+async function updateUserRole(userId, roleName) {
+    const roleId = await getRoleId(roleName);
+    if (!roleId)
+        throw new Error('Role not found');
+    // Check if already assigned
+    const existing = await database_1.default.query('SELECT * FROM usuario_roles WHERE usuarios_id = $1 AND roles_id = $2', [userId, roleId]);
+    if (existing.rows.length === 0) {
+        await assignUserRole(userId, roleId);
     }
 }
 //# sourceMappingURL=user.queries.js.map

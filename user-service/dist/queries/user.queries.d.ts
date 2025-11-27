@@ -25,4 +25,9 @@ export declare function insertProfesorDatos(userId: number, profesorData: {
     nacionalidad: string;
 }): Promise<void>;
 export declare function insertAlumnoRepresentante(alumnoId: number, representantes: number[]): Promise<void>;
+export declare function getUserById(id: number): Promise<any>;
+export declare function updateUser(id: number, updates: any): Promise<{
+    message: string;
+}>;
+export declare function updateUserRole(userId: number, roleName: string): Promise<void>;
 //# sourceMappingURL=user.queries.d.ts.map

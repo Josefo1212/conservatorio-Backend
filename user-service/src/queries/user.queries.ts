@@ -230,6 +230,9 @@ export async function updateUser(id: number, updates: any) {
 export async function updateUserRole(userId: number, roleName: string) {
     const roleId = await getRoleId(roleName);
     if (!roleId) throw new Error('Role not found');
-    await pool.query('DELETE FROM usuario_roles WHERE usuarios_id = $1', [userId]);
-    await assignUserRole(userId, roleId);
+    // Check if already assigned
+    const existing = await pool.query('SELECT * FROM usuario_roles WHERE usuarios_id = $1 AND roles_id = $2', [userId, roleId]);
+    if (existing.rows.length === 0) {
+        await assignUserRole(userId, roleId);
+    }
 }
