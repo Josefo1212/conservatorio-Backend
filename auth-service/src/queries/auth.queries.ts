@@ -41,3 +41,9 @@ export async function getUserRole(userId: number) {
   console.log('Rol consultado para usuario:', userId, 'rol encontrado:', result.rows[0]?.nombre_rol);
   return result.rows[0]?.nombre_rol;
 }
+
+export async function updateUserPassword(cedula: string, hashedPassword: string) {
+  const result = await pool.query('UPDATE usuario SET password = $1 WHERE cedula = $2', [hashedPassword, cedula]);
+  console.log('Contraseña actualizada para cédula:', cedula, 'filas afectadas:', result.rowCount);
+  return result;
+}

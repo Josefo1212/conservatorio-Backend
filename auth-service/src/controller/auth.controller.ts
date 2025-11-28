@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getUserByCedula, insertSession, updateSessionLogout, getSessionByRefreshToken, getUserRole } from "../queries/auth.queries";
+import { getUserByCedula, insertSession, updateSessionLogout, getSessionByRefreshToken, getUserRole, updateUserPassword } from "../queries/auth.queries";
 import bcrypt from "bcrypt";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../middleware/token.utils";
 
@@ -86,6 +86,41 @@ export async function logout(req: Request, res: Response) {
     res.status(200).json({ message: 'Logout exitoso' });
   } catch (error) {
     console.error('Error en logout:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+}
+
+export async function forgotPassword(req: Request, res: Response) {
+  try {
+    const { cedula } = req.body;
+    if (!cedula) return res.status(400).json({ message: 'Cédula requerida' });
+
+    const { rows } = await getUserByCedula(cedula);
+    if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    res.status(200).json({ message: 'Usuario encontrado, proceda a cambiar la contraseña' });
+  } catch (error) {
+    console.error('Error en forgot-password:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+}
+
+export async function resetPassword(req: Request, res: Response) {
+  try {
+    const { cedula, newPassword, confirmPassword } = req.body;
+    if (!cedula || !newPassword || !confirmPassword) return res.status(400).json({ message: 'Cédula, nueva contraseña y confirmación requeridas' });
+
+    if (newPassword !== confirmPassword) return res.status(400).json({ message: 'Las contraseñas no coinciden' });
+
+    const { rows } = await getUserByCedula(cedula);
+    if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await updateUserPassword(cedula, hashedPassword);
+
+    res.status(200).json({ message: 'Contraseña actualizada exitosamente' });
+  } catch (error) {
+    console.error('Error en reset-password:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 }
