@@ -1,7 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import app from './app';
-import pool from './config/database';
+import dbService from './config/database';
 import authRoutes from './routes/auth.routes';
 
 const PORT = process.env.PORT || 3000;
@@ -13,7 +13,7 @@ app.use('/auth', authRoutes);
 
 async function main(){
     try {
-        await pool.connect();
+        await dbService.connect();
         console.log('Connected to the database successfully.');
     } catch (error) {
         console.error('Failed to connect to the database:', error);
