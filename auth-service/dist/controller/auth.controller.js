@@ -7,41 +7,43 @@ exports.login = login;
 exports.validate = validate;
 exports.refresh = refresh;
 exports.logout = logout;
+exports.getAvailableRoles = getAvailableRoles;
+exports.selectRole = selectRole;
 exports.forgotPassword = forgotPassword;
 exports.resetPassword = resetPassword;
-const auth_queries_1 = require("../queries/auth.queries");
-const bcrypt_1 = __importDefault(require("bcrypt"));
+exports.register = register;
+const AuthService_1 = __importDefault(require("../services/AuthService"));
 const token_utils_1 = require("../middleware/token.utils");
+const auth_queries_1 = require("../queries/auth.queries");
 async function login(req, res) {
     try {
         const { cedula, password } = req.body;
         if (!cedula || !password)
             return res.status(400).json({ message: 'cedula y contraseña requeridos' });
-        const { rows } = await (0, auth_queries_1.getUserByCedula)(cedula);
-        const user = rows[0];
-        if (!user)
-            return res.status(401).json({ message: 'Credenciales inválidas' });
-        const isPasswordValid = await bcrypt_1.default.compare(password, user.password);
-        if (!isPasswordValid)
-            return res.status(401).json({ message: 'Credenciales inválidas' });
-        // Consultar el rol del usuario
-        const rol = await (0, auth_queries_1.getUserRole)(user.id_usuario);
-        if (!rol)
-            return res.status(403).json({ message: 'Usuario sin rol asignado' });
-        console.log('Usuario autenticado, generando tokens...');
-        // Generate tokens con rol incluido
-        const accessToken = (0, token_utils_1.generateAccessToken)(user.id_usuario, rol);
-        const refreshToken = (0, token_utils_1.generateRefreshToken)(user.id_usuario);
-        const refreshExp = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-        // Insert session
         const ipOrigen = req.ip || req.connection.remoteAddress || 'unknown';
-        await (0, auth_queries_1.insertSession)(user.id_usuario, ipOrigen, refreshToken, refreshExp);
-        console.log('Sesión insertada en BD');
-        // Set cookies
-        res.cookie('refreshToken', refreshToken, { httpOnly: false, secure: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
-        console.log('Cookie de refresh token establecida');
-        res.status(200).json({ message: 'Login exitoso', accessToken, user: { id: user.id_usuario } });
-        console.log('Login completado exitosamente');
+        const { accessToken, refreshToken, rol, nombres, apellidos } = await AuthService_1.default.login(cedula, password, ipOrigen);
+        // Guardar ambos tokens en cookies (httpOnly)
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 15 * 60 * 1000, // 15 minutos
+        });
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+        });
+        // No enviar id ni access token en el body
+        res.status(200).json({
+            message: 'Login exitoso',
+            user: {
+                rol,
+                nombres,
+                apellidos,
+            },
+        });
     }
     catch (error) {
         console.error('Error en login:', error);
@@ -58,17 +60,8 @@ async function refresh(req, res) {
         const refreshToken = req.cookies?.refreshToken;
         if (!refreshToken)
             return res.status(401).json({ message: 'Refresh token requerido' });
-        const payload = (0, token_utils_1.verifyRefreshToken)(refreshToken);
-        if (!payload)
-            return res.status(401).json({ message: 'Refresh token inválido' });
-        const { rows } = await (0, auth_queries_1.getSessionByRefreshToken)(refreshToken);
-        if (rows.length === 0)
-            return res.status(401).json({ message: 'Sesión inválida' });
-        console.log('Refresh token verificado, generando nuevo access token');
-        const rol = await (0, auth_queries_1.getUserRole)(payload.userId); // Agregar consulta de rol
-        const newAccessToken = (0, token_utils_1.generateAccessToken)(payload.userId, rol);
-        res.status(200).json({ accessToken: newAccessToken });
-        console.log('Nuevo access token enviado');
+        const { accessToken } = await AuthService_1.default.refresh(refreshToken);
+        res.status(200).json({ accessToken });
     }
     catch (error) {
         console.error('Error en refresh:', error);
@@ -78,20 +71,61 @@ async function refresh(req, res) {
 async function logout(req, res) {
     try {
         const refreshToken = req.cookies?.refreshToken;
-        console.log('Refresh token en logout:', refreshToken);
-        if (refreshToken) {
-            const { rows } = await (0, auth_queries_1.getSessionByRefreshToken)(refreshToken);
-            console.log('Sesiones encontradas para refresh token:', rows.length);
-            if (rows.length > 0) {
-                await (0, auth_queries_1.updateSessionLogout)(rows[0].id_sesion);
-            }
-        }
-        console.log('Sesión revocada, cookie limpiada');
+        if (refreshToken)
+            await AuthService_1.default.logout(refreshToken);
         res.clearCookie('refreshToken');
+        res.clearCookie('accessToken');
         res.status(200).json({ message: 'Logout exitoso' });
     }
     catch (error) {
         console.error('Error en logout:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
+}
+// Devuelve todos los roles disponibles del usuario autenticado (vía refresh cookie)
+async function getAvailableRoles(req, res) {
+    try {
+        const refreshToken = req.cookies?.refreshToken;
+        if (!refreshToken)
+            return res.status(401).json({ message: 'Refresh token requerido' });
+        const payload = (0, token_utils_1.verifyRefreshToken)(refreshToken);
+        if (!payload)
+            return res.status(401).json({ message: 'Refresh token inválido' });
+        const roles = await (0, auth_queries_1.getUserRolesList)(payload.userId);
+        return res.status(200).json({ roles });
+    }
+    catch (error) {
+        console.error('Error en getAvailableRoles:', error);
+        res.status(500).json({ message: 'Error interno del servidor' });
+    }
+}
+// Establece el rol activo del usuario re-emitiendo el accessToken en cookie
+async function selectRole(req, res) {
+    try {
+        const refreshToken = req.cookies?.refreshToken;
+        const { role } = req.body || {};
+        if (!refreshToken)
+            return res.status(401).json({ message: 'Refresh token requerido' });
+        if (!role)
+            return res.status(400).json({ message: 'Rol requerido' });
+        const payload = (0, token_utils_1.verifyRefreshToken)(refreshToken);
+        if (!payload)
+            return res.status(401).json({ message: 'Refresh token inválido' });
+        const roles = await (0, auth_queries_1.getUserRolesList)(payload.userId);
+        if (!roles.includes(role))
+            return res.status(403).json({ message: 'Rol no asignado al usuario' });
+        // Emitir nuevo access token con el rol elegido
+        const accessToken = (0, token_utils_1.generateAccessToken)(payload.userId, role);
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 15 * 60 * 1000,
+        });
+        return res.status(200).json({ message: 'Rol seleccionado', role });
+    }
+    catch (error) {
+        console.error('Error en selectRole:', error);
         res.status(500).json({ message: 'Error interno del servidor' });
     }
 }
@@ -100,8 +134,8 @@ async function forgotPassword(req, res) {
         const { cedula } = req.body;
         if (!cedula)
             return res.status(400).json({ message: 'Cédula requerida' });
-        const { rows } = await (0, auth_queries_1.getUserByCedula)(cedula);
-        if (rows.length === 0)
+        const exists = await AuthService_1.default.forgotPassword(cedula);
+        if (!exists)
             return res.status(404).json({ message: 'Usuario no encontrado' });
         res.status(200).json({ message: 'Usuario encontrado, proceda a cambiar la contraseña' });
     }
@@ -117,16 +151,54 @@ async function resetPassword(req, res) {
             return res.status(400).json({ message: 'Cédula, nueva contraseña y confirmación requeridas' });
         if (newPassword !== confirmPassword)
             return res.status(400).json({ message: 'Las contraseñas no coinciden' });
-        const { rows } = await (0, auth_queries_1.getUserByCedula)(cedula);
-        if (rows.length === 0)
+        const exists = await AuthService_1.default.forgotPassword(cedula);
+        if (!exists)
             return res.status(404).json({ message: 'Usuario no encontrado' });
-        const hashedPassword = await bcrypt_1.default.hash(newPassword, 10);
-        await (0, auth_queries_1.updateUserPassword)(cedula, hashedPassword);
+        await AuthService_1.default.resetPassword(cedula, newPassword);
         res.status(200).json({ message: 'Contraseña actualizada exitosamente' });
     }
     catch (error) {
         console.error('Error en reset-password:', error);
         res.status(500).json({ message: 'Error interno del servidor' });
+    }
+}
+async function register(req, res) {
+    try {
+        const authenticatedUser = req.user;
+        if (!authenticatedUser || !['personal', 'master'].includes(authenticatedUser.rol)) {
+            return res.status(403).json({ message: 'Acceso denegado: solo personal o master pueden registrar usuarios' });
+        }
+        const { cedula, nombres, apellidos, correo, password, fecha_nacimiento, nro_tlf, estado, municipio, localidad, tipo_localidad, direccion, lugar_nacimiento, role, alumnoData, representanteData, profesorData, representantes } = req.body || {};
+        if (!cedula || !nombres || !apellidos || !correo || !password || !fecha_nacimiento || !nro_tlf || !estado || !municipio || !localidad || !tipo_localidad || !direccion || !lugar_nacimiento || !role) {
+            return res.status(400).json({ message: 'Datos requeridos faltantes' });
+        }
+        const result = await AuthService_1.default.register({
+            cedula,
+            nombres,
+            apellidos,
+            correo,
+            password,
+            fecha_nacimiento,
+            nro_tlf,
+            estado,
+            municipio,
+            localidad,
+            tipo_localidad,
+            direccion,
+            lugar_nacimiento,
+            role,
+            alumnoData,
+            representanteData,
+            profesorData,
+            representantes,
+        });
+        return res.status(201).json({ message: 'Usuario registrado correctamente', data: result });
+    }
+    catch (error) {
+        console.error('REGISTER ERROR:', error);
+        const msg = error?.message || 'Error interno del servidor';
+        const status = msg.includes('Usuario ya registrado') || msg.includes('Rol especificado no existe') || msg.includes('Datos de') ? 400 : 500;
+        return res.status(status).json({ message: msg });
     }
 }
 //# sourceMappingURL=auth.controller.js.map

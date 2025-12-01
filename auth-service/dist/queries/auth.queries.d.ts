@@ -4,5 +4,6 @@ export declare function updateSessionLogout(idSesion: number): Promise<import("p
 export declare function getSessionByRefreshToken(refreshToken: string): Promise<import("pg").QueryResult<any>>;
 export declare function getUserById(idUsuario: number): Promise<import("pg").QueryResult<any>>;
 export declare function getUserRole(userId: number): Promise<any>;
+export declare function getUserRolesList(userId: number): Promise<any[]>;
 export declare function updateUserPassword(cedula: string, hashedPassword: string): Promise<import("pg").QueryResult<any>>;
 //# sourceMappingURL=auth.queries.d.ts.map

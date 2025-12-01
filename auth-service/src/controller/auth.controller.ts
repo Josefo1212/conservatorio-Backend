@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import authService from "../services/AuthService";
+import { verifyRefreshToken, generateAccessToken } from "../middleware/token.utils";
+import { getUserRolesList } from "../queries/auth.queries";
 
 export async function login(req: Request, res: Response) {
   try {
@@ -7,10 +9,31 @@ export async function login(req: Request, res: Response) {
     if (!cedula || !password) return res.status(400).json({ message: 'cedula y contraseña requeridos' });
 
     const ipOrigen = req.ip || (req.connection as any).remoteAddress || 'unknown';
-    const { accessToken, refreshToken, userId } = await authService.login(cedula, password, ipOrigen);
+    const { accessToken, refreshToken, rol, nombres, apellidos } = await authService.login(cedula, password, ipOrigen);
 
-    res.cookie('refreshToken', refreshToken, { httpOnly: false, secure: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.status(200).json({ message: 'Login exitoso', accessToken, user: { id: userId } });
+    // Guardar ambos tokens en cookies (httpOnly)
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutos
+    });
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+    });
+
+    // No enviar id ni access token en el body
+    res.status(200).json({
+      message: 'Login exitoso',
+      user: {
+        rol,
+        nombres,
+        apellidos,
+      },
+    });
   } catch (error) {
     console.error('Error en login:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
@@ -41,9 +64,54 @@ export async function logout(req: Request, res: Response) {
     const refreshToken = req.cookies?.refreshToken;
     if (refreshToken) await authService.logout(refreshToken);
     res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
     res.status(200).json({ message: 'Logout exitoso' });
   } catch (error) {
     console.error('Error en logout:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+}
+
+// Devuelve todos los roles disponibles del usuario autenticado (vía refresh cookie)
+export async function getAvailableRoles(req: Request, res: Response) {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) return res.status(401).json({ message: 'Refresh token requerido' });
+    const payload = verifyRefreshToken(refreshToken);
+    if (!payload) return res.status(401).json({ message: 'Refresh token inválido' });
+    const roles = await getUserRolesList(payload.userId);
+    return res.status(200).json({ roles });
+  } catch (error) {
+    console.error('Error en getAvailableRoles:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+}
+
+// Establece el rol activo del usuario re-emitiendo el accessToken en cookie
+export async function selectRole(req: Request, res: Response) {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+    const { role } = req.body || {};
+    if (!refreshToken) return res.status(401).json({ message: 'Refresh token requerido' });
+    if (!role) return res.status(400).json({ message: 'Rol requerido' });
+
+    const payload = verifyRefreshToken(refreshToken);
+    if (!payload) return res.status(401).json({ message: 'Refresh token inválido' });
+
+    const roles = await getUserRolesList(payload.userId);
+    if (!roles.includes(role)) return res.status(403).json({ message: 'Rol no asignado al usuario' });
+
+    // Emitir nuevo access token con el rol elegido
+    const accessToken = generateAccessToken(payload.userId, role);
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000,
+    });
+    return res.status(200).json({ message: 'Rol seleccionado', role });
+  } catch (error) {
+    console.error('Error en selectRole:', error);
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 }

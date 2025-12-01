@@ -1,10 +1,11 @@
 {
-    "getUserByCedula": "SELECT id_usuario, password FROM usuario WHERE cedula = $1",
+    "getUserByCedula": "SELECT id_usuario, password, nombres, apellidos, correo FROM usuario WHERE cedula = $1",
     "insertSession": "INSERT INTO sesion (id_usuarios, fecha_inicio, ip_origen, refresh_token, refresh_exp, is_revoked) VALUES ($1, NOW(), $2, $3, $4, false) RETURNING id_sesion",
     "updateSessionLogout": "UPDATE sesion SET fecha_fin = NOW(), is_revoked = true WHERE id_sesion = $1",
     "getSessionByRefreshToken": "SELECT * FROM sesion WHERE refresh_token = $1 AND is_revoked = false AND refresh_exp > NOW()",
     "getUserById": "SELECT id_usuario, cedula FROM usuario WHERE id_usuario = $1",
     "getUserRole": "SELECT r.nombre_rol FROM usuario_roles ur JOIN Roles r ON ur.roles_id = r.id_rol WHERE ur.usuarios_id = $1",
+    "getUserRolesList": "SELECT r.nombre_rol FROM usuario_roles ur JOIN roles r ON ur.roles_id = r.id_rol WHERE ur.usuarios_id = $1 ORDER BY r.nombre_rol",
     "updateUserPassword": "UPDATE usuario SET password = $1 WHERE cedula = $2",
     "selectEstadoByNombre": "SELECT id_estado FROM estado WHERE nombre_estado = $1",
     "insertEstado": "INSERT INTO estado (nombre_estado) VALUES ($1) RETURNING id_estado",

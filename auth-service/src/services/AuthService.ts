@@ -21,7 +21,16 @@ export class AuthService {
 
     await insertSession(user.id_usuario, ipOrigen, refreshToken, refreshExp);
 
-    return { accessToken, refreshToken, refreshExp, userId: user.id_usuario };
+    return {
+      accessToken,
+      refreshToken,
+      refreshExp,
+      userId: user.id_usuario,
+      rol,
+      nombres: user.nombres,
+      apellidos: user.apellidos,
+      correo: user.correo,
+    };
   }
 
   public async refresh(refreshToken: string) {

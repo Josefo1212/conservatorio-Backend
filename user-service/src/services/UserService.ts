@@ -14,6 +14,12 @@ class UserService {
     await updateUserRoleQuery(userId, role);
     return { message: 'Role assigned successfully' };
   }
+
+  async designateRole(userId: number, role: string) {
+    // Alias de asignación, aquí nos aseguramos de que el rol quede asignado
+    await updateUserRoleQuery(userId, role);
+    return { message: 'Role designated successfully' };
+  }
 }
 
 const userService = new UserService();

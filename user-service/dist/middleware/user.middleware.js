@@ -6,14 +6,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.authenticateToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const authenticateToken = (req, res, next) => {
-    const authHeader = req.header('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    // Preferir cookie accessToken; fallback al header Authorization
+    let token = req.cookies?.accessToken;
+    if (!token) {
+        const authHeader = req.header('Authorization');
+        token = authHeader?.replace('Bearer ', '');
+    }
     if (!token) {
         return res.status(401).json({ message: 'Token requerido' });
     }
     try {
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'tu_clave_secreta_aqui');
-        req.user = decoded; // Poblar req.user con el payload (ej. { userId, rol })
+        req.user = decoded; // { userId, rol }
         next();
     }
     catch (err) {

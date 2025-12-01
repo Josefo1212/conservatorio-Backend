@@ -6,11 +6,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyToken = verifyToken;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 function verifyToken(req, res, next) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ message: "Token no proporcionado." });
+    // Preferir cookie accessToken; fallback al Authorization header
+    let token = req.cookies?.accessToken;
+    if (!token) {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ message: "Token no proporcionado." });
+        }
+        token = authHeader.split(" ")[1];
     }
-    const token = authHeader.split(" ")[1];
     if (!token) {
         return res.status(401).json({ message: "Token malformado." });
     }

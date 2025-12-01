@@ -38,3 +38,18 @@ export async function assignRole(req: Request, res: Response) {
         return res.status(500).json({ message: 'Error assigning role', error: error.message });
     }
 }
+
+export async function designateRole(req: Request, res: Response) {
+    try {
+        const authUser = (req as any).user;
+        if (!authUser || !['personal', 'master'].includes(authUser.rol)) {
+            return res.status(403).json({ message: 'Acceso denegado: se requiere rol personal o master' });
+        }
+        const { userId, role } = req.body;
+        const result = await userService.designateRole(Number(userId), role);
+        return res.json(result);
+    } catch (error: any) {
+        console.error('DESIGNATE ROLE ERROR:', error);
+        return res.status(500).json({ message: 'Error designating role', error: error.message });
+    }
+}

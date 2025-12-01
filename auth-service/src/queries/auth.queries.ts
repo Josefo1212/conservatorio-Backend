@@ -36,6 +36,11 @@ export async function getUserRole(userId: number) {
   return result.rows[0]?.nombre_rol;
 }
 
+export async function getUserRolesList(userId: number) {
+  const result = await dbService.query(dbService.queries.auth.getUserRolesList, [userId]);
+  return result.rows.map(r => r.nombre_rol);
+}
+
 export async function updateUserPassword(cedula: string, hashedPassword: string) {
   const result = await dbService.query(dbService.queries.auth.updateUserPassword, [hashedPassword, cedula]);
   console.log('Contraseña actualizada para cédula:', cedula, 'filas afectadas:', result.rowCount);

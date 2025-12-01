@@ -9,6 +9,7 @@ exports.updateSessionLogout = updateSessionLogout;
 exports.getSessionByRefreshToken = getSessionByRefreshToken;
 exports.getUserById = getUserById;
 exports.getUserRole = getUserRole;
+exports.getUserRolesList = getUserRolesList;
 exports.updateUserPassword = updateUserPassword;
 const database_1 = __importDefault(require("../config/database"));
 async function getUserByCedula(cedula) {
@@ -40,6 +41,10 @@ async function getUserRole(userId) {
     const result = await database_1.default.query(database_1.default.queries.auth.getUserRole, [userId]);
     console.log('Rol consultado para usuario:', userId, 'rol encontrado:', result.rows[0]?.nombre_rol);
     return result.rows[0]?.nombre_rol;
+}
+async function getUserRolesList(userId) {
+    const result = await database_1.default.query(database_1.default.queries.auth.getUserRolesList, [userId]);
+    return result.rows.map(r => r.nombre_rol);
 }
 async function updateUserPassword(cedula, hashedPassword) {
     const result = await database_1.default.query(database_1.default.queries.auth.updateUserPassword, [hashedPassword, cedula]);
