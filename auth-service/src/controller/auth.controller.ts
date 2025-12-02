@@ -2,11 +2,13 @@ import { Request, Response } from "express";
 import authService from "../services/AuthService";
 import { verifyRefreshToken, generateAccessToken } from "../middleware/token.utils";
 import { getUserRolesList } from "../queries/auth.queries";
+import { MESSAGES, HTTP_STATUS, ALLOWED_ROLES } from "../constants";
+import { successResponse, errorResponse, validateRequired, hasRequiredRole } from "../utils";
 
 export async function login(req: Request, res: Response) {
   try {
     const { cedula, password } = req.body;
-    if (!cedula || !password) return res.status(400).json({ message: 'cedula y contraseña requeridos' });
+    if (!cedula || !password) return errorResponse(res, MESSAGES.BAD_REQUEST, HTTP_STATUS.BAD_REQUEST);
 
     const ipOrigen = req.ip || (req.connection as any).remoteAddress || 'unknown';
     const { accessToken, refreshToken, rol, nombres, apellidos } = await authService.login(cedula, password, ipOrigen);
@@ -25,18 +27,16 @@ export async function login(req: Request, res: Response) {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
     });
 
-    // No enviar id ni access token en el body
-    res.status(200).json({
-      message: 'Login exitoso',
+    // No enviar id, rol ni access token en el body
+    return successResponse(res, MESSAGES.LOGIN_SUCCESS, {
       user: {
-        rol,
         nombres,
         apellidos,
       },
-    });
+    }, HTTP_STATUS.OK);
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    return errorResponse(res, MESSAGES.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -92,14 +92,20 @@ export async function selectRole(req: Request, res: Response) {
   try {
     const refreshToken = req.cookies?.refreshToken;
     const { role } = req.body || {};
-    if (!refreshToken) return res.status(401).json({ message: 'Refresh token requerido' });
-    if (!role) return res.status(400).json({ message: 'Rol requerido' });
+    if (!refreshToken) return errorResponse(res, MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED);
+    if (!role) return errorResponse(res, MESSAGES.ROLE_REQUIRED, HTTP_STATUS.BAD_REQUEST);
 
     const payload = verifyRefreshToken(refreshToken);
-    if (!payload) return res.status(401).json({ message: 'Refresh token inválido' });
+    if (!payload) return errorResponse(res, MESSAGES.TOKEN_INVALID, HTTP_STATUS.UNAUTHORIZED);
 
     const roles = await getUserRolesList(payload.userId);
-    if (!roles.includes(role)) return res.status(403).json({ message: 'Rol no asignado al usuario' });
+
+    // Verificar que el usuario tenga permisos (personal o master)
+    if (!hasRequiredRole('personal', roles) && !hasRequiredRole('master', roles)) {
+      return errorResponse(res, MESSAGES.ACCESS_DENIED, HTTP_STATUS.FORBIDDEN);
+    }
+
+    if (!roles.includes(role)) return errorResponse(res, MESSAGES.ROLE_NOT_ASSIGNED, HTTP_STATUS.FORBIDDEN);
 
     // Emitir nuevo access token con el rol elegido
     const accessToken = generateAccessToken(payload.userId, role);
@@ -109,10 +115,10 @@ export async function selectRole(req: Request, res: Response) {
       sameSite: 'lax',
       maxAge: 15 * 60 * 1000,
     });
-    return res.status(200).json({ message: 'Rol seleccionado', role });
+    return successResponse(res, MESSAGES.ROLE_SELECTED, { role });
   } catch (error) {
     console.error('Error en selectRole:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    return errorResponse(res, MESSAGES.INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -152,8 +158,8 @@ export async function resetPassword(req: Request, res: Response) {
 export async function register(req: Request, res: Response) {
   try {
     const authenticatedUser = (req as any).user;
-    if (!authenticatedUser || !['personal', 'master'].includes(authenticatedUser.rol)) {
-      return res.status(403).json({ message: 'Acceso denegado: solo personal o master pueden registrar usuarios' });
+    if (!authenticatedUser || !hasRequiredRole(authenticatedUser.rol, ALLOWED_ROLES.REGISTER)) {
+      return errorResponse(res, MESSAGES.ACCESS_DENIED_REGISTER, HTTP_STATUS.FORBIDDEN);
     }
 
     const {
@@ -177,8 +183,10 @@ export async function register(req: Request, res: Response) {
       representantes
     } = req.body || {};
 
-    if (!cedula || !nombres || !apellidos || !correo || !password || !fecha_nacimiento || !nro_tlf || !estado || !municipio || !localidad || !tipo_localidad || !direccion || !lugar_nacimiento || !role) {
-      return res.status(400).json({ message: 'Datos requeridos faltantes' });
+    const requiredFields = ['cedula', 'nombres', 'apellidos', 'correo', 'password', 'fecha_nacimiento', 'nro_tlf', 'estado', 'municipio', 'localidad', 'tipo_localidad', 'direccion', 'lugar_nacimiento', 'role'];
+    const validationError = validateRequired(req.body, requiredFields);
+    if (validationError) {
+      return errorResponse(res, validationError, HTTP_STATUS.BAD_REQUEST);
     }
 
     const result = await authService.register({
@@ -202,11 +210,11 @@ export async function register(req: Request, res: Response) {
       representantes,
     });
 
-    return res.status(201).json({ message: 'Usuario registrado correctamente', data: result });
+    return successResponse(res, MESSAGES.REGISTER_SUCCESS, result, HTTP_STATUS.CREATED);
   } catch (error: any) {
     console.error('REGISTER ERROR:', error);
-    const msg = error?.message || 'Error interno del servidor';
-    const status = msg.includes('Usuario ya registrado') || msg.includes('Rol especificado no existe') || msg.includes('Datos de') ? 400 : 500;
-    return res.status(status).json({ message: msg });
+    const msg = error?.message || MESSAGES.INTERNAL_SERVER_ERROR;
+    const status = msg.includes('Usuario ya registrado') || msg.includes('Rol especificado no existe') || msg.includes('Datos de') ? HTTP_STATUS.BAD_REQUEST : HTTP_STATUS.INTERNAL_SERVER_ERROR;
+    return errorResponse(res, msg, status);
   }
 }

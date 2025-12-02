@@ -15,5 +15,11 @@
     "insertLocalidad": "INSERT INTO localidad (id_municipios, nombre_localidad, tipo) VALUES ($1, $2, $3) RETURNING id_localidad",
     "insertUbicacion": "INSERT INTO ubicacion (id_localidades, direccion, lugar_nacimiento) VALUES ($1, $2, $3) RETURNING id_ubicacion",
     "insertUsuario": "INSERT INTO usuario (id_ubicaciones, cedula, nombres, apellidos, correo, password, fecha_nacimiento, nro_tlf) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id_usuario",
-    "selectUserIdByCedula": "SELECT id_usuario FROM usuario WHERE cedula = $1"
+    "selectUserIdByCedula": "SELECT id_usuario FROM usuario WHERE cedula = $1",
+    "selectRoleIdByName": "SELECT id_rol FROM roles WHERE nombre_rol = $1",
+    "insertUsuarioRol": "INSERT INTO usuario_roles (usuarios_id, roles_id) VALUES ($1, $2)",
+    "insertAlumnoDatos": "INSERT INTO Alumno_datos (id_alumnos, matricula, estatus, nacionalidad, instituto, instrumento_principal) VALUES ($1, $2, $3, $4, $5, $6)",
+    "insertRepresentanteDatos": "INSERT INTO Representante_datos (id_representantes, ocupacion, parentesco) VALUES ($1, $2, $3)",
+    "insertProfesorDatos": "INSERT INTO Profesor_datos (id_profesores, profesion, nacionalidad) VALUES ($1, $2, $3)",
+    "insertAlumnoRepresentante": "INSERT INTO Alumno_Representante (alumnos_id, representantes_id) VALUES ($1, $2)"
 }

@@ -4,5 +4,12 @@
   "updateUbicacion": "UPDATE ubicacion SET direccion = $1, lugar_nacimiento = $2 WHERE id_ubicacion = (SELECT id_ubicaciones FROM usuario WHERE id_usuario = $3)",
   "selectRoleIdByName": "SELECT id_rol FROM roles WHERE nombre_rol = $1",
   "selectUsuarioRolExists": "SELECT * FROM usuario_roles WHERE usuarios_id = $1 AND roles_id = $2",
-  "insertUsuarioRol": "INSERT INTO usuario_roles (usuarios_id, roles_id) VALUES ($1, $2)"
+  "insertUsuarioRol": "INSERT INTO usuario_roles (usuarios_id, roles_id) VALUES ($1, $2)",
+  "insertAlumnoDatos": "INSERT INTO Alumno_datos (id_alumnos, matricula, estatus, nacionalidad, instituto, instrumento_principal) VALUES ($1, $2, $3, $4, $5, $6)",
+  "insertRepresentanteDatos": "INSERT INTO Representante_datos (id_representantes, ocupacion, parentesco) VALUES ($1, $2, $3)",
+  "insertProfesorDatos": "INSERT INTO Profesor_datos (id_profesores, profesion, nacionalidad) VALUES ($1, $2, $3)",
+  "deleteUsuarioRol": "DELETE FROM usuario_roles WHERE usuarios_id = $1 AND roles_id = $2",
+  "deleteAlumnoDatos": "DELETE FROM Alumno_datos WHERE id_alumnos = $1",
+  "deleteRepresentanteDatos": "DELETE FROM Representante_datos WHERE id_representantes = $1",
+  "deleteProfesorDatos": "DELETE FROM Profesor_datos WHERE id_profesores = $1"
 }

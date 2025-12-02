@@ -13,10 +13,10 @@ const dbService = new DatabaseService({
     password: process.env.DB_PASSWORD,
 });
 
-// Cargar queries predefinidas en el namespace 'user'
+// Cargar queries predefinidas en el namespace 'auth'
 const queriesPath = path.join(__dirname, '../queries/queries.json');
 try {
-    dbService.loadQueries(queriesPath, 'user');
+    dbService.loadQueries(queriesPath, 'auth');
 } catch (e) {
     console.warn('No se pudieron cargar las queries predefinidas de user.', e);
 }
