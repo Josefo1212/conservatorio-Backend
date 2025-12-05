@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { setupProxies } from './utils/proxy.utils';
 import gatewayRoutes from './routes/gateway.routes';
 
@@ -16,6 +17,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use(cookieParser());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:8080',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],

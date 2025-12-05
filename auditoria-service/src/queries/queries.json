@@ -1,7 +1,11 @@
 {
-  "create": "INSERT INTO auditoria (user_id, action, entity, resource_id, before_data, after_data, ip, user_agent, metadata) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *;",
-  "update": "UPDATE auditoria SET user_id=$1, action=$2, entity=$3, resource_id=$4, before_data=$5, after_data=$6, ip=$7, user_agent=$8, metadata=$9 WHERE id=$10 RETURNING *;",
-  "findAll": "SELECT * FROM auditoria ORDER BY created_at DESC LIMIT $1 OFFSET $2;",
-  "findById": "SELECT * FROM auditoria WHERE id=$1;",
-  "deleteById": "DELETE FROM auditoria WHERE id=$1 RETURNING *;"
+  "create": "INSERT INTO auditoria (id_usuarios, id_sesiones, id_modulos, id_acciones, fecha_hora, detalle, tabla_afectada, ip) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *;",
+  "update": "UPDATE auditoria SET id_usuarios=$1, id_sesiones=$2, id_modulos=$3, id_acciones=$4, fecha_hora=$5, detalle=$6, tabla_afectada=$7, ip=$8 WHERE id_auditoria=$9 RETURNING *;",
+  "findAll": "SELECT * FROM auditoria ORDER BY fecha_hora DESC LIMIT $1 OFFSET $2;",
+  "findById": "SELECT * FROM auditoria WHERE id_auditoria=$1;",
+  "deleteById": "DELETE FROM auditoria WHERE id_auditoria=$1 RETURNING *;",
+  "findByUser": "SELECT * FROM auditoria WHERE id_usuarios=$1 ORDER BY fecha_hora DESC LIMIT $2 OFFSET $3;",
+  "findByModule": "SELECT * FROM auditoria WHERE id_modulos=$1 ORDER BY fecha_hora DESC LIMIT $2 OFFSET $3;",
+  "findByAction": "SELECT * FROM auditoria WHERE id_acciones=$1 ORDER BY fecha_hora DESC LIMIT $2 OFFSET $3;",
+  "filter": "SELECT * FROM auditoria WHERE ($1::int IS NULL OR id_usuarios=$1) AND ($2::int IS NULL OR id_modulos=$2) AND ($3::int IS NULL OR id_acciones=$3) AND ($4::timestamp IS NULL OR fecha_hora >= $4) AND ($5::timestamp IS NULL OR fecha_hora <= $5) ORDER BY fecha_hora DESC LIMIT $6 OFFSET $7;"
 }
